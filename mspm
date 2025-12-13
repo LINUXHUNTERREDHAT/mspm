@@ -1,0 +1,79 @@
+#!/bin/bash
+
+REPO_URL="https://github.com/Nick-cpp/mspm-repo/raw/refs/heads/main"
+
+download_with_progress() {
+    local url="$1"
+    local output="$2"
+    
+    if command -v wget &> /dev/null; then
+        wget -q --show-progress -O "$output" "$url"
+        return $?
+    else
+        echo "wget is not available. Please install wget."
+        return 1
+    fi
+}
+
+check_package_exists() {
+    local package="$1"
+    local url="${REPO_URL}/${package}"
+    
+    if command -v wget &> /dev/null; then
+        if wget -q --spider "$url"; then
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+if [ "$1" = "install" ] && [ -n "$2" ]; then
+    PACKAGE="$2"
+    
+    if ! command -v wget &> /dev/null; then
+        echo "Error: wget is required but not installed. Please install wget first."
+        exit 1
+    fi
+    
+    if check_package_exists "$PACKAGE"; then
+        echo "Package found: $PACKAGE"
+        read -p "Download? (y/n): " -n 1 -r
+        echo
+        
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            DOWNLOAD_URL="${REPO_URL}/${PACKAGE}"
+            TEMP_FILE="/tmp/${PACKAGE}"
+            
+            if download_with_progress "$DOWNLOAD_URL" "$TEMP_FILE"; then
+                chmod +x "$TEMP_FILE"
+                sudo mv "$TEMP_FILE" "/usr/bin/${PACKAGE}"
+                echo "Installed ${PACKAGE} to /usr/bin/"
+            else
+                echo "Failed to download ${PACKAGE}"
+                rm -f "$TEMP_FILE"
+                exit 1
+            fi
+        else
+            echo "Installation cancelled"
+            exit 0
+        fi
+    else
+        echo "Package not found: $PACKAGE"
+        exit 1
+    fi
+elif [ "$1" = "remove" ] && [ -n "$2" ]; then
+    PACKAGE="$2"
+    
+    IFS=':' read -ra PATHS <<< "$PATH"
+    
+    for DIR in "${PATHS[@]}"; do
+        if [[ "$DIR" == /usr/* ]] && [ -f "${DIR}/${PACKAGE}" ]; then
+            sudo rm -f "${DIR}/${PACKAGE}"
+            echo "Removed ${PACKAGE} from ${DIR}"
+        fi
+    done
+else
+    echo "Usage: mspm install|remove <package-name>"
+    exit 1
+fi
