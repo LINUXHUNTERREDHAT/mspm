@@ -76,6 +76,8 @@ my-repo/
 
 ## Requirements for `mspm-build`
 
+By default, mspm-build executes inside /etc/mspm/cache/<package_name>. Do not change this working directory; perform all build operations directly within it.
+
 Every `mspm-build` script is sourced as a Bash script and must adhere to the following rules:
 
 ### 1. File Naming
