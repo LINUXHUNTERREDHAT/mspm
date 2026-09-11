@@ -1,7 +1,7 @@
 #!/bin/bash
 
-REPO_DIR="/etc/mspm/mspm-repo"
-REPO_GIT_URL="https://github.com/Nick-cpp/mspm-repo.git"
+REPO_DIR="/etc/mspm/mspm-repo-master"
+REPO_TAR_URL="https://github.com/Nick-cpp/mspm-repo/archive/refs/tags/master.tar.gz"
 CACHE_BASE_DIR="/etc/mspm/cache"
 INSTALLED_FILE="/etc/mspm/installed"
 MAKECONF_FILE="/etc/mspm/make.conf"
@@ -83,21 +83,34 @@ prepare_build_script() {
 }
 
 sync_repo() {
-    if ! command -v git &> /dev/null; then
-        echo "Error: git is required for sync but not installed."
+    if ! command -v wget &> /dev/null || ! command -v tar &> /dev/null; then
+        echo "Error: wget and tar are required for sync but not installed."
         exit 1
     fi
 
     echo "Synchronizing repository..."
+    
     if [ -d "$REPO_DIR" ]; then
         rm -rf "$REPO_DIR"
     fi
 
-    mkdir -p "$(dirname "$REPO_DIR")"
-    if git clone "$REPO_GIT_URL" "$REPO_DIR"; then
-        echo "Repository successfully synchronized to ${REPO_DIR}"
+    mkdir -p "$REPO_DIR"
+    
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+
+    if wget -q --show-progress "$REPO_TAR_URL" -O "${tmp_dir}/master.tar.gz"; then
+        if tar -xf "${tmp_dir}/master.tar.gz" -C "$REPO_DIR" --strip-components=1; then
+            echo "Repository successfully synchronized to ${REPO_DIR}"
+            rm -rf "$tmp_dir"
+        else
+            echo "Error: failed to extract archive."
+            rm -rf "$tmp_dir"
+            exit 1
+        fi
     else
-        echo "Error: failed to clone repository."
+        echo "Error: failed to download repository archive."
+        rm -rf "$tmp_dir"
         exit 1
     fi
 }
@@ -177,7 +190,6 @@ elif [ "$ACTION" = "remove" ] && [ -n "$PACKAGE" ]; then
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             if prepare_build_script "$PACKAGE"; then
                 WORK_DIR="${CACHE_BASE_DIR}/${PACKAGE}"
-                SCRIPT_FILE="${WORK_DIR}/mspm-dir"
                 SCRIPT_FILE="${WORK_DIR}/mspm-build"
                 
                 source "$SCRIPT_FILE"
