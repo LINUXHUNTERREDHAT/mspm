@@ -43,6 +43,11 @@ check_package_exists() {
     return 1
 }
 
+is_package_installed() {
+    local package="$1"
+    [ -f "$INSTALLED_FILE" ] && grep -qx "$package" "$INSTALLED_FILE"
+}
+
 register_package() {
     local package="$1"
     mkdir -p "$(dirname "$INSTALLED_FILE")"
@@ -65,7 +70,7 @@ check_dependencies() {
     if declare -p depends &> /dev/null && [ ${#depends[@]} -gt 0 ]; then
         for dep in "${depends[@]}"; do
             if [ -n "$dep" ]; then
-                if [ ! -f "$INSTALLED_FILE" ] || ! grep -qx "$dep" "$INSTALLED_FILE"; then
+                if ! is_package_installed "$dep"; then
                     missing+=("$dep")
                 fi
             fi
@@ -111,7 +116,7 @@ if [ "$ACTION" = "install" ] && [ -n "$PACKAGE" ]; then
     
     if check_package_exists "$PACKAGE"; then
         echo "Package found: $PACKAGE"
-        read -p "Download and run install procedure? (y/n): " -n 1 -r
+        read -p "Install? (y/n): " -n 1 -r
         echo
         
         if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -156,9 +161,14 @@ elif [ "$ACTION" = "remove" ] && [ -n "$PACKAGE" ]; then
         exit 1
     fi
 
+    if ! is_package_installed "$PACKAGE"; then
+        echo "Package $PACKAGE is not installed, cannot remove."
+        exit 1
+    fi
+
     if check_package_exists "$PACKAGE"; then
         echo "Package found: $PACKAGE"
-        read -p "Download and run remove procedure? (y/n): " -n 1 -r
+        read -p "Remove? (y/n): " -n 1 -r
         echo
         
         if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -189,7 +199,7 @@ elif [ "$ACTION" = "remove" ] && [ -n "$PACKAGE" ]; then
             exit 0
         fi
     else
-        echo "Package not found: $PACKAGE"
+        echo "Package not found in repository: $PACKAGE"
         exit 1
     fi
 
