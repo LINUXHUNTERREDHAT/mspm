@@ -1,6 +1,6 @@
 # mspm
 
-A simple, lightweight, source-based package manager designed for **NoPersonalLife Linux**.
+A simple, lightweight package manager.
 
 ---
 
