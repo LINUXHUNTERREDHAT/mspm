@@ -55,7 +55,7 @@ find_package() {
 
 is_package_installed() {
     local target="$1"
-    [ -f "$INSTALLED_FILE" ] && grep -qx "$target" "$INSTALLED_FILE"
+    [ -f "$INSTALLED_FILE" ] && grep -qx "${target}::.*" "$INSTALLED_FILE"
 }
 
 get_installed_package_entry() {
@@ -66,19 +66,33 @@ get_installed_package_entry() {
 }
 
 register_package() {
-    local full_spec="$1"
+    local pkg_name="$1"
+    local repo_name="$2"
+    local version="$3"
+    local full_spec="${pkg_name}::${repo_name}::${version}"
+    
     mkdir -p "$(dirname "$INSTALLED_FILE")"
     touch "$INSTALLED_FILE"
-    if ! grep -qx "$full_spec" "$INSTALLED_FILE"; then
-        echo "$full_spec" >> "$INSTALLED_FILE"
-    fi
+    unregister_package "$pkg_name"
+    echo "$full_spec" >> "$INSTALLED_FILE"
 }
 
 unregister_package() {
-    local full_spec="$1"
+    local pkg_name="$1"
     if [ -f "$INSTALLED_FILE" ]; then
-        sed -i "/^${full_spec}$/d" "$INSTALLED_FILE"
+        sed -i "/^${pkg_name}::/d" "$INSTALLED_FILE"
     fi
+}
+
+get_repo_version() {
+    local pkg="$1"
+    local repo="$2"
+    local script="${REPOS_BASE_DIR}/${repo}/${pkg}/mspm-build"
+    local version=""
+    if [ -f "$script" ]; then
+        version=$(version="" && source "$script" &>/dev/null && echo "$version")
+    fi
+    echo "$version"
 }
 
 check_dependencies() {
@@ -179,7 +193,8 @@ process_install_list() {
     for spec in "${resolved[@]}"; do
         pkg="${spec%%::*}"
         repo="${spec##*::}"
-        echo -e "  - ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}"
+        ver=$(get_repo_version "$pkg" "$repo")
+        echo -e "  - ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET} ${CLR_BLUE}(version: ${ver:-unknown})${CLR_RESET}"
     done
     echo
 
@@ -200,6 +215,7 @@ process_install_list() {
             work_dir="${CACHE_BASE_DIR}/${cache_dir_name}"
             script_file="${work_dir}/mspm-build"
             
+            version=""
             source "$script_file"
             set +e
             
@@ -211,7 +227,7 @@ process_install_list() {
                 echo -e "Executing install function for ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}..."
                 ( set -e; install )
                 if [ $? -eq 0 ]; then
-                    register_package "$spec"
+                    register_package "$pkg" "$repo" "$version"
                     echo -e "${CLR_GREEN}Successfully installed ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}"
                 else
                     echo -e "${CLR_RED}Install function failed for ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}"
@@ -233,17 +249,14 @@ process_remove_list() {
 
     for item in "${targets[@]}"; do
         if [[ "$item" == *"::"* ]]; then
-            full_spec="$item"
+            pkg_name="${item%%::*}"
+            full_spec=$(get_installed_package_entry "$pkg_name")
         else
             full_spec=$(get_installed_package_entry "$item")
-            if [ -z "$full_spec" ]; then
-                echo -e "${CLR_RED}Package $item is not installed, cannot remove.${CLR_RESET}"
-                exit 1
-            fi
         fi
 
-        if ! is_package_installed "$full_spec"; then
-            echo -e "${CLR_RED}Package $full_spec is not installed, cannot remove.${CLR_RESET}"
+        if [ -z "$full_spec" ]; then
+            echo -e "${CLR_RED}Package $item is not installed, cannot remove.${CLR_RESET}"
             exit 1
         fi
 
@@ -252,9 +265,8 @@ process_remove_list() {
 
     echo -e "Packages to remove:"
     for spec in "${resolved[@]}"; do
-        pkg="${spec%%::*}"
-        repo="${spec##*::}"
-        echo -e "  - ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}"
+        IFS=':' read -r pkg _ repo _ ver <<< "${spec//::/:}"
+        echo -e "  - ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET} ${CLR_BLUE}(version: ${ver:-unknown})${CLR_RESET}"
     done
     echo
 
@@ -267,8 +279,7 @@ process_remove_list() {
     fi
 
     for spec in "${resolved[@]}"; do
-        pkg="${spec%%::*}"
-        repo="${spec##*::}"
+        IFS=':' read -r pkg _ repo _ ver <<< "${spec//::/:}"
         cache_dir_name="${pkg}_${repo}"
 
         if prepare_build_script "$pkg" "$repo"; then
@@ -282,7 +293,7 @@ process_remove_list() {
                 echo -e "Executing remove function for ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}..."
                 ( set -e; remove )
                 if [ $? -eq 0 ]; then
-                    unregister_package "$spec"
+                    unregister_package "$pkg"
                     cd /tmp || exit 1
                     rm -rf "$work_dir"
                     echo -e "${CLR_GREEN}Successfully removed ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}"
@@ -297,6 +308,61 @@ process_remove_list() {
         else
             exit 1
         fi
+    done
+}
+
+process_update() {
+    if [ ! -f "$INSTALLED_FILE" ]; then
+        echo -e "${CLR_YELLOW}No installed packages found.${CLR_RESET}"
+        return 0
+    fi
+
+    local updates_to_pkg=()
+    local updates_to_repo=()
+    local updates_old_ver=()
+    local updates_new_ver=()
+
+    while IFS= read -r entry || [ -n "$entry" ]; do
+        [ -z "$entry" ] && continue
+        IFS=':' read -r pkg _ repo _ inst_ver <<< "${entry//::/:}"
+
+        local repo_ver
+        repo_ver=$(get_repo_version "$pkg" "$repo")
+
+        if [ -n "$repo_ver" ] && [ "$inst_ver" != "$repo_ver" ]; then
+            updates_to_pkg+=("$pkg")
+            updates_to_repo+=("$repo")
+            updates_old_ver+=("${inst_ver:-unknown}")
+            updates_new_ver+=("$repo_ver")
+        fi
+    done < "$INSTALLED_FILE"
+
+    if [ ${#updates_to_pkg[@]} -eq 0 ]; then
+        echo -e "${CLR_GREEN}All packages are up to date.${CLR_RESET}"
+        return 0
+    fi
+
+    echo -e "Available updates:"
+    for (( i=0; i<${#updates_to_pkg[@]}; i++ )); do
+        echo -e "  - ${updates_to_pkg[$i]}${CLR_YELLOW}::${updates_to_repo[$i]}${CLR_RESET} [${CLR_RED}${updates_old_ver[$i]}${CLR_RESET} -> ${CLR_GREEN}${updates_new_ver[$i]}${CLR_RESET}]"
+    done
+    echo
+
+    read -p "$(echo -e "Proceed with update? (${CLR_GREEN}y${CLR_RESET}/${CLR_RED}n${CLR_RESET}): ")" -r REPLY
+    echo
+
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Update cancelled."
+        exit 0
+    fi
+
+    for (( i=0; i<${#updates_to_pkg[@]}; i++ )); do
+        local pkg="${updates_to_pkg[$i]}"
+        local repo="${updates_to_repo[$i]}"
+        
+        echo -e "Updating ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}..."
+        process_remove_list "${pkg}::${repo}"
+        process_install_list "${pkg}::${repo}"
     done
 }
 
@@ -323,7 +389,14 @@ elif [ "$ACTION" = "remove" ] && [ $# -gt 0 ]; then
     fi
     process_remove_list "$@"
 
+elif [ "$ACTION" = "update" ]; then
+    if [ ! -d "$REPOS_BASE_DIR" ]; then
+        echo -e "${CLR_RED}Repositories directory not found at ${REPOS_BASE_DIR}. Run 'mspm sync' first.${CLR_RESET}"
+        exit 1
+    fi
+    process_update
+
 else
-    echo "Usage: mspm sync | install <package-1>[::repo] [package-2...] | remove <package-1>[::repo] [package-2...]"
+    echo "Usage: mspm sync | install <package-1>[::repo] [package-2...] | remove <package-1>[::repo] [package-2...] | update"
     exit 1
 fi
