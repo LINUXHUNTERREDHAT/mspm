@@ -119,7 +119,7 @@ elif [ "$ACTION" = "install" ] && [ -n "$PACKAGE" ]; then
 
     if check_package_exists "$PACKAGE"; then
         echo "Package found: $PACKAGE"
-        read -p "Install? (y/n): " -n 1 -r
+        read -p "Install? (y/n): " -r REPLY
         echo
         
         if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -171,7 +171,7 @@ elif [ "$ACTION" = "remove" ] && [ -n "$PACKAGE" ]; then
 
     if check_package_exists "$PACKAGE"; then
         echo "Package found: $PACKAGE"
-        read -p "Remove? (y/n): " -n 1 -r
+        read -p "Remove? (y/n): " -r REPLY
         echo
         
         if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -186,6 +186,8 @@ elif [ "$ACTION" = "remove" ] && [ -n "$PACKAGE" ]; then
                     echo "Executing remove function for ${PACKAGE}..."
                     if remove; then
                         unregister_package "$PACKAGE"
+                        cd /tmp || exit 1
+                        rm -rf "$WORK_DIR"
                         echo "Successfully removed ${PACKAGE}"
                     else
                         echo "Remove function failed for ${PACKAGE}"
