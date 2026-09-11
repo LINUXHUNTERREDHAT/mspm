@@ -52,8 +52,6 @@ Target a specific repository entry for removal:
 
 ---
 
-# Creating own repository for mspm:
-
 # Creating a Repository for mspm
 
 A guide on how to structure, create, and maintain your own package repository for **mspm**.
