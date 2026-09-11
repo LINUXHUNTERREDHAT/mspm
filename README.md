@@ -96,11 +96,14 @@ Every `mspm-build` script is sourced as a Bash script and must adhere to the fol
 * Dependencies are defined using a standard Bash array: `depends=("pkg1" "pkg2::repo")`.
 * If there are no dependencies, leave the array empty or omit it entirely.
 
-### 3. The `install()` Function
+### 3. Version
+* The version is used for checking for the updates you should define the version in your mspm-build
+
+### 4. The `install()` Function
 * Must be defined in the script.
 * Handles downloading, compiling, and copying binaries/files into the system (`/usr`, `/etc`, etc.).
 
-### 4. The `remove()` Function
+### 5. The `remove()` Function
 * Must be defined in the script.
 * Cleanly removes all files installed by the package.
 
@@ -113,14 +116,16 @@ Every `mspm-build` script is sourced as a Bash script and must adhere to the fol
 
 #!/bin/sh
 
+version="2.68.1"
 depends=("cmake-bin")
 
 install() {
     if [ ! -f 2.68.1.tar.gz ]; then
         wget https://github.com/fastfetch-cli/fastfetch/archive/refs/tags/2.68.1.tar.gz
     fi
-    tar -xf 2.68.1.tar.gz
-    cd fastfetch-2.68.1/
+    mkdir -p fastfetch/
+    tar -xf 2.68.1.tar.gz -C fastfetch --strip-components=1
+    cd fastfetch/
     ./run.sh
     cp build/fastfetch /usr/bin/fastfetch
 }
