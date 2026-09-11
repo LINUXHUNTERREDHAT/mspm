@@ -19,7 +19,7 @@ Fetch and update local repository trees defined in `/etc/mspm/repos.conf`:
 Install one or multiple packages:
 
 ```
-# mspm install <package1> [<package2> ...]
+# mspm install <package1> <package2> ...
 ```
 
 Explicitly target a specific repository using `pkg::repo` syntax:
@@ -33,7 +33,7 @@ Explicitly target a specific repository using `pkg::repo` syntax:
 Remove installed packages from the system:
 
 ```
-# mspm remove <package1> [<package2> ...]
+# mspm remove <package1> <package2> ...
 ```
 
 Target a specific repository entry for removal:
