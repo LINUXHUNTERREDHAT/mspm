@@ -3,6 +3,19 @@
 REPO_URL="https://github.com/Nick-cpp/mspm-repo/raw/refs/heads/main"
 CACHE_BASE_DIR="/etc/mspm/cache"
 INSTALLED_FILE="/etc/mspm/installed"
+MAKECONF_FILE="/etc/mspm/make.conf"
+
+load_make_conf() {
+    if [ -f "$MAKECONF_FILE" ]; then
+        set -a
+        source "$MAKECONF_FILE"
+        set +a
+
+        if [ -n "$MAKEOPTS" ]; then
+            export MAKEFLAGS="$MAKEOPTS $MAKEFLAGS"
+        fi
+    fi
+}
 
 download_with_progress() {
     local url="$1"
@@ -84,6 +97,8 @@ fetch_build_script() {
         return 1
     fi
 }
+
+load_make_conf
 
 ACTION="$1"
 PACKAGE="$2"
