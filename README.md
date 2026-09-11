@@ -41,6 +41,11 @@ Target a specific repository entry for removal:
 ```
 # mspm remove fastfetch::mspm-repo-master
 ```
+### 4. Upgrading installed packages: 
+
+```
+# mspm update
+```
 
 ---
 
