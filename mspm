@@ -157,27 +157,36 @@ elif [ "$ACTION" = "remove" ] && [ -n "$PACKAGE" ]; then
     fi
 
     if check_package_exists "$PACKAGE"; then
-        if fetch_build_script "$PACKAGE"; then
-            WORK_DIR="${CACHE_BASE_DIR}/${PACKAGE}"
-            SCRIPT_FILE="${WORK_DIR}/mspm-build"
-            
-            source "$SCRIPT_FILE"
-            
-            if declare -f remove &> /dev/null; then
-                echo "Executing remove function for ${PACKAGE}..."
-                if remove; then
-                    unregister_package "$PACKAGE"
-                    echo "Successfully removed ${PACKAGE}"
+        echo "Package found: $PACKAGE"
+        read -p "Download and run remove procedure? (y/n): " -n 1 -r
+        echo
+        
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            if fetch_build_script "$PACKAGE"; then
+                WORK_DIR="${CACHE_BASE_DIR}/${PACKAGE}"
+                SCRIPT_FILE="${WORK_DIR}/mspm-build"
+                
+                source "$SCRIPT_FILE"
+                
+                if declare -f remove &> /dev/null; then
+                    echo "Executing remove function for ${PACKAGE}..."
+                    if remove; then
+                        unregister_package "$PACKAGE"
+                        echo "Successfully removed ${PACKAGE}"
+                    else
+                        echo "Remove function failed for ${PACKAGE}"
+                        exit 1
+                    fi
                 else
-                    echo "Remove function failed for ${PACKAGE}"
+                    echo "Error: 'remove' function not found in build script."
                     exit 1
                 fi
             else
-                echo "Error: 'remove' function not found in build script."
                 exit 1
             fi
         else
-            exit 1
+            echo "Removal cancelled."
+            exit 0
         fi
     else
         echo "Package not found: $PACKAGE"
