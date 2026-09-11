@@ -1,6 +1,8 @@
 #!/bin/bash
 
 REPO_URL="https://github.com/Nick-cpp/mspm-repo/raw/refs/heads/main"
+CACHE_BASE_DIR="/etc/mspm/cache"
+INSTALLED_FILE="/etc/mspm/installed"
 
 download_with_progress() {
     local url="$1"
@@ -10,14 +12,14 @@ download_with_progress() {
         wget -q --show-progress -O "$output" "$url"
         return $?
     else
-        echo "wget is not available. Please install wget."
+        echo "Error: wget is not installed."
         return 1
     fi
 }
 
 check_package_exists() {
     local package="$1"
-    local url="${REPO_URL}/${package}"
+    local url="${REPO_URL}/${package}/mspm-build"
     
     if command -v wget &> /dev/null; then
         if wget -q --spider "$url"; then
@@ -28,51 +30,145 @@ check_package_exists() {
     return 1
 }
 
-if [ "$1" = "install" ] && [ -n "$2" ]; then
-    PACKAGE="$2"
+register_package() {
+    local package="$1"
+    mkdir -p "$(dirname "$INSTALLED_FILE")"
+    touch "$INSTALLED_FILE"
+    if ! grep -qx "$package" "$INSTALLED_FILE"; then
+        echo "$package" >> "$INSTALLED_FILE"
+    fi
+}
+
+unregister_package() {
+    local package="$1"
+    if [ -f "$INSTALLED_FILE" ]; then
+        sed -i "/^${package}$/d" "$INSTALLED_FILE"
+    fi
+}
+
+check_dependencies() {
+    local missing=()
     
+    if declare -p depends &> /dev/null && [ ${#depends[@]} -gt 0 ]; then
+        for dep in "${depends[@]}"; do
+            if [ -n "$dep" ]; then
+                if [ ! -f "$INSTALLED_FILE" ] || ! grep -qx "$dep" "$INSTALLED_FILE"; then
+                    missing+=("$dep")
+                fi
+            fi
+        done
+    fi
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "Error: missing dependencies: ${missing[*]}"
+        return 1
+    fi
+
+    return 0
+}
+
+fetch_build_script() {
+    local package="$1"
+    local work_dir="${CACHE_BASE_DIR}/${package}"
+    
+    mkdir -p "$work_dir"
+    
+    local download_url="${REPO_URL}/${package}/mspm-build"
+    local script_file="${work_dir}/mspm-build"
+    
+    if download_with_progress "$download_url" "$script_file"; then
+        cd "$work_dir" || exit 1
+        return 0
+    else
+        echo "Failed to download build script for ${package}"
+        return 1
+    fi
+}
+
+ACTION="$1"
+PACKAGE="$2"
+
+if [ "$ACTION" = "install" ] && [ -n "$PACKAGE" ]; then
     if ! command -v wget &> /dev/null; then
-        echo "Error: wget is required but not installed. Please install wget first."
+        echo "Error: wget is required but not installed."
         exit 1
     fi
     
     if check_package_exists "$PACKAGE"; then
         echo "Package found: $PACKAGE"
-        read -p "Download? (y/n): " -n 1 -r
+        read -p "Download and run install procedure? (y/n): " -n 1 -r
         echo
         
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            DOWNLOAD_URL="${REPO_URL}/${PACKAGE}"
-            TEMP_FILE="/tmp/${PACKAGE}"
-            
-            if download_with_progress "$DOWNLOAD_URL" "$TEMP_FILE"; then
-                chmod +x "$TEMP_FILE"
-                sudo mv "$TEMP_FILE" "/usr/bin/${PACKAGE}"
-                echo "Installed ${PACKAGE} to /usr/bin/"
+            if fetch_build_script "$PACKAGE"; then
+                WORK_DIR="${CACHE_BASE_DIR}/${PACKAGE}"
+                SCRIPT_FILE="${WORK_DIR}/mspm-build"
+                
+                source "$SCRIPT_FILE"
+                
+                if ! check_dependencies; then
+                    exit 1
+                fi
+                
+                if declare -f install &> /dev/null; then
+                    echo "Executing install function for ${PACKAGE}..."
+                    if install; then
+                        register_package "$PACKAGE"
+                        echo "Successfully installed ${PACKAGE}"
+                    else
+                        echo "Install function failed for ${PACKAGE}"
+                        exit 1
+                    fi
+                else
+                    echo "Error: 'install' function not found in build script."
+                    exit 1
+                fi
             else
-                echo "Failed to download ${PACKAGE}"
-                rm -f "$TEMP_FILE"
                 exit 1
             fi
         else
-            echo "Installation cancelled"
+            echo "Installation cancelled."
             exit 0
         fi
     else
         echo "Package not found: $PACKAGE"
         exit 1
     fi
-elif [ "$1" = "remove" ] && [ -n "$2" ]; then
-    PACKAGE="$2"
-    
-    IFS=':' read -ra PATHS <<< "$PATH"
-    
-    for DIR in "${PATHS[@]}"; do
-        if [[ "$DIR" == /usr/* ]] && [ -f "${DIR}/${PACKAGE}" ]; then
-            sudo rm -f "${DIR}/${PACKAGE}"
-            echo "Removed ${PACKAGE} from ${DIR}"
+
+elif [ "$ACTION" = "remove" ] && [ -n "$PACKAGE" ]; then
+    if ! command -v wget &> /dev/null; then
+        echo "Error: wget is required but not installed."
+        exit 1
+    fi
+
+    if check_package_exists "$PACKAGE"; then
+        if fetch_build_script "$PACKAGE"; then
+            WORK_DIR="${CACHE_BASE_DIR}/${PACKAGE}"
+            SCRIPT_FILE="${WORK_DIR}/mspm-build"
+            
+            source "$SCRIPT_FILE"
+            
+            if declare -f remove &> /dev/null; then
+                echo "Executing remove function for ${PACKAGE}..."
+                if remove; then
+                    unregister_package "$PACKAGE"
+                    echo "Successfully removed ${PACKAGE}"
+                else
+                    echo "Remove function failed for ${PACKAGE}"
+                    exit 1
+                fi
+            else
+                echo "Error: 'remove' function not found in build script."
+                exit 1
+            fi
+        else
+            exit 1
         fi
-    done
+    else
+        echo "Package not found: $PACKAGE"
+        exit 1
+    fi
+
 else
     echo "Usage: mspm install|remove <package-name>"
     exit 1
