@@ -52,6 +52,10 @@ Target a specific repository entry for removal:
 
 ---
 
+## Adding custom repositories to `mspm`
+
+To make repositories available to `mspm`, add an entry to `/etc/mspm/repos.conf` using the format `<repo_name> = <sync_command>`
+
 # Creating a Repository for mspm
 
 A guide on how to structure, create, and maintain your own package repository for **mspm**.
@@ -121,9 +125,3 @@ remove() {
 }
 
 ```
-
----
-
-## Adding Your Repository to `mspm`
-
-To make your repository available to `mspm`, add an entry to `/etc/mspm/repos.conf` using the format `<repo_name> = <sync_command>`
