@@ -1,4 +1,3 @@
-```
 # mspm
 
 A simple, lightweight, source-based package manager designed for **NoPersonalLife Linux**.
@@ -50,5 +49,3 @@ Target a specific repository entry for removal:
 * `/etc/mspm/repos.conf` — Defines repositories and sync commands.
 * `/etc/mspm/make.conf` — Configures environment variables (e.g., `MAKEOPTS="-j$(nproc)"`).
 * `/etc/mspm/installed` — Plain-text database tracking installed package specifications.
-
-```
