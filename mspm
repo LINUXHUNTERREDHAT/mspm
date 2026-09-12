@@ -190,21 +190,23 @@ process_install_list() {
         fi
     done
 
-    echo -e "Packages to install:"
-    for spec in "${resolved[@]}"; do
-        pkg="${spec%%::*}"
-        repo="${spec##*::}"
-        ver=$(get_repo_version "$pkg" "$repo")
-        echo -e "  - ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET} ${CLR_BLUE}(version: ${ver:-unknown})${CLR_RESET}"
-    done
-    echo
+    if [ "${SKIP_CONFIRM}" != "1" ]; then
+        echo -e "Packages to install:"
+        for spec in "${resolved[@]}"; do
+            pkg="${spec%%::*}"
+            repo="${spec##*::}"
+            ver=$(get_repo_version "$pkg" "$repo")
+            echo -e "  - ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET} ${CLR_BLUE}(version: ${ver:-unknown})${CLR_RESET}"
+        done
+        echo
 
-    read -p "$(echo -e "Proceed with installation? (${CLR_GREEN}y${CLR_RESET}/${CLR_RED}n${CLR_RESET}): ")" -r REPLY
-    echo
+        read -p "$(echo -e "Proceed with installation? (${CLR_GREEN}y${CLR_RESET}/${CLR_RED}n${CLR_RESET}): ")" -r REPLY
+        echo
 
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Installation cancelled."
-        exit 0
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            echo "Installation cancelled."
+            exit 0
+        fi
     fi
 
     for spec in "${resolved[@]}"; do
@@ -366,6 +368,7 @@ process_update() {
         exit 0
     fi
 
+    SKIP_CONFIRM=1
     for (( i=0; i<${#updates_to_pkg[@]}; i++ )); do
         local pkg="${updates_to_pkg[$i]}"
         local repo="${updates_to_repo[$i]}"
@@ -373,6 +376,7 @@ process_update() {
         echo -e "Updating ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET}..."
         process_install_list "${pkg}::${repo}"
     done
+    unset SKIP_CONFIRM
 }
 
 load_make_conf
