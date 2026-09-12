@@ -93,7 +93,7 @@ Every `mspm-build` script is sourced as a Bash script and must adhere to the fol
 * The recipe file **must** be named exactly `mspm-build`.
 
 ### 2. Dependencies (`depends`)
-* Dependencies are defined using a standard Bash array: `depends=("pkg1" "pkg2::repo")`.
+* Dependencies are defined using a standard Bash array: `depends=("pkg1" "pkg2::repo")`. Use `depends=("pkg1||pkg2")` to require one of pkgs
 * If there are no dependencies, leave the array empty or omit it entirely.
 
 ### 3. Version
