@@ -379,6 +379,65 @@ process_update() {
     unset SKIP_CONFIRM
 }
 
+process_search() {
+    local query="$1"
+    local found=0
+
+    while IFS= read -r repo; do
+        [ -z "$repo" ] && continue
+        local repo_dir="${REPOS_BASE_DIR}/${repo}"
+        
+        if [ -d "$repo_dir" ]; then
+            while IFS= read -r script_path; do
+                [ -z "$script_path" ] && continue
+                local pkg_dir
+                pkg_dir=$(dirname "$script_path")
+                local pkg_name
+                pkg_name=$(basename "$pkg_dir")
+
+                if [ -z "$query" ] || [[ "$pkg_name" =~ $(echo "$query" | tr '[:upper:]' '[:lower:]') ]]; then
+                    local ver
+                    ver=$(get_repo_version "$pkg_name" "$repo")
+                    local installed_mark=""
+                    
+                    if is_package_installed "$pkg_name"; then
+                        installed_mark=" ${CLR_GREEN}[installed]${CLR_RESET}"
+                    fi
+                    
+                    echo -e "* ${CLR_CYAN}${pkg_name}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET} ${CLR_BLUE}(version: ${ver:-unknown})${CLR_RESET}${installed_mark}"
+                    found=1
+                fi
+            done < <(find "$repo_dir" -mindepth 2 -maxdepth 2 -name "mspm-build" 2>/dev/null)
+        fi
+    done < <(get_ordered_repos)
+
+    if [ $found -eq 0 ]; then
+        if [ -n "$query" ]; then
+            echo -e "${CLR_YELLOW}No packages matching '${query}' found.${CLR_RESET}"
+        else
+            echo -e "${CLR_YELLOW}No packages available in repositories.${CLR_RESET}"
+        fi
+    fi
+}
+
+process_list() {
+    if [ ! -f "$INSTALLED_FILE" ] || [ ! -s "$INSTALLED_FILE" ]; then
+        echo -e "${CLR_YELLOW}No installed packages.${CLR_RESET}"
+        return 0
+    fi
+
+    echo -e "Installed packages:"
+    while IFS= read -r entry || [ -n "$entry" ]; do
+        [ -z "$entry" ] && continue
+        pkg="${entry%%::*}"
+        rest="${entry#*::}"
+        repo="${rest%%::*}"
+        ver="${rest#*::}"
+
+        echo -e "  - ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET} ${CLR_BLUE}(version: ${ver:-unknown})${CLR_RESET}"
+    done < "$INSTALLED_FILE"
+}
+
 load_make_conf
 
 ACTION="$1"
@@ -409,7 +468,17 @@ elif [ "$ACTION" = "update" ]; then
     fi
     process_update
 
+elif [ "$ACTION" = "search" ]; then
+    if [ ! -d "$REPOS_BASE_DIR" ]; then
+        echo -e "${CLR_RED}Repositories directory not found at ${REPOS_BASE_DIR}. Run 'mspm sync' first.${CLR_RESET}"
+        exit 1
+    fi
+    process_search "$1"
+
+elif [ "$ACTION" = "list" ]; then
+    process_list
+
 else
-    echo "Usage: mspm sync | install <package-1>[::repo] [package-2...] | remove <package-1>[::repo] [package-2...] | update"
+    echo "Usage: mspm sync | install <pkg-1>[::repo]... | remove <pkg-1>[::repo]... | update | search [query] | list"
     exit 1
 fi
