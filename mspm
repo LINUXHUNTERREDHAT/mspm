@@ -11,6 +11,7 @@ CLR_RED="\033[1;31m"
 CLR_GREEN="\033[1;32m"
 CLR_YELLOW="\033[1;33m"
 CLR_BLUE="\033[1;34m"
+CLR_CYAN="\033[1;36m"
 
 load_make_conf() {
     if [ -f "$MAKECONF_FILE" ]; then
@@ -109,7 +110,7 @@ check_dependencies() {
     fi
 
     if [ ${#missing[@]} -gt 0 ]; then
-        echo -e "${CLR_RED}Error:${CLR_RESET} missing dependencies: ${CLR_BLUE}${missing[*]}${CLR_RESET}"
+        echo -e "${CLR_RED}Error:${CLR_RESET} missing dependencies: ${CLR_CYAN}${missing[*]}${CLR_RESET}"
         return 1
     fi
 
@@ -125,7 +126,7 @@ prepare_build_script() {
     local target_script="${work_dir}/mspm-build"
     
     if [ ! -f "$repo_script" ]; then
-        echo -e "${CLR_RED}Error:${CLR_RESET} build script for ${package} not found in repository ${CLR_YELLOW}${repo}${CLR_RESET}."
+        echo -e "${CLR_RED}Error:${CLR_RESET} build script for ${CLR_CYAN}${package}${CLR_RESET} not found in repository ${CLR_YELLOW}${repo}${CLR_RESET}."
         return 1
     fi
 
@@ -184,7 +185,7 @@ process_install_list() {
         if [ -n "$found_repo" ]; then
             resolved+=("${pkg}::${found_repo}")
         else
-            echo -e "${CLR_RED}Package not found in repository: $item${CLR_RESET}"
+            echo -e "${CLR_RED}Package not found in repository: ${CLR_CYAN}$item${CLR_RESET}"
             exit 1
         fi
     done
@@ -194,7 +195,7 @@ process_install_list() {
         pkg="${spec%%::*}"
         repo="${spec##*::}"
         ver=$(get_repo_version "$pkg" "$repo")
-        echo -e "  - ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET} ${CLR_BLUE}(version: ${ver:-unknown})${CLR_RESET}"
+        echo -e "  - ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET} ${CLR_BLUE}(version: ${ver:-unknown})${CLR_RESET}"
     done
     echo
 
@@ -224,13 +225,13 @@ process_install_list() {
             fi
             
             if declare -f install &> /dev/null; then
-                echo -e "Executing install function for ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}..."
+                echo -e "Executing install function for ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET}..."
                 ( set -e; install )
                 if [ $? -eq 0 ]; then
                     register_package "$pkg" "$repo" "$version"
-                    echo -e "${CLR_GREEN}Successfully installed ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}"
+                    echo -e "${CLR_GREEN}Successfully installed ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET}"
                 else
-                    echo -e "${CLR_RED}Install function failed for ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}"
+                    echo -e "${CLR_RED}Install function failed for ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET}"
                     exit 1
                 fi
             else
@@ -256,7 +257,7 @@ process_remove_list() {
         fi
 
         if [ -z "$full_spec" ]; then
-            echo -e "${CLR_RED}Package $item is not installed, cannot remove.${CLR_RESET}"
+            echo -e "${CLR_RED}Package ${CLR_CYAN}$item${CLR_RED} is not installed, cannot remove.${CLR_RESET}"
             exit 1
         fi
 
@@ -269,7 +270,7 @@ process_remove_list() {
         rest="${spec#*::}"
         repo="${rest%%::*}"
         ver="${rest#*::}"
-        echo -e "  - ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET} ${CLR_BLUE}(version: ${ver:-unknown})${CLR_RESET}"
+        echo -e "  - ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET} ${CLR_BLUE}(version: ${ver:-unknown})${CLR_RESET}"
     done
     echo
 
@@ -296,15 +297,15 @@ process_remove_list() {
             set +e
             
             if declare -f remove &> /dev/null; then
-                echo -e "Executing remove function for ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}..."
+                echo -e "Executing remove function for ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET}..."
                 ( set -e; remove )
                 if [ $? -eq 0 ]; then
                     unregister_package "$pkg"
                     cd /tmp || exit 1
                     rm -rf "$work_dir"
-                    echo -e "${CLR_GREEN}Successfully removed ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}"
+                    echo -e "${CLR_GREEN}Successfully removed ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET}"
                 else
-                    echo -e "${CLR_RED}Remove function failed for ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}"
+                    echo -e "${CLR_RED}Remove function failed for ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET}"
                     exit 1
                 fi
             else
@@ -353,7 +354,7 @@ process_update() {
 
     echo -e "Available updates:"
     for (( i=0; i<${#updates_to_pkg[@]}; i++ )); do
-        echo -e "  - ${updates_to_pkg[$i]}${CLR_YELLOW}::${updates_to_repo[$i]}${CLR_RESET} [${CLR_RED}${updates_old_ver[$i]}${CLR_RESET} -> ${CLR_GREEN}${updates_new_ver[$i]}${CLR_RESET}]"
+        echo -e "  - ${CLR_CYAN}${updates_to_pkg[$i]}${CLR_RESET}${CLR_YELLOW}::${updates_to_repo[$i]}${CLR_RESET} [${CLR_RED}${updates_old_ver[$i]}${CLR_RESET} -> ${CLR_GREEN}${updates_new_ver[$i]}${CLR_RESET}]"
     done
     echo
 
@@ -369,7 +370,7 @@ process_update() {
         local pkg="${updates_to_pkg[$i]}"
         local repo="${updates_to_repo[$i]}"
         
-        echo -e "Updating ${pkg}${CLR_YELLOW}::${repo}${CLR_RESET}..."
+        echo -e "Updating ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET}..."
         process_install_list "${pkg}::${repo}"
     done
 }
