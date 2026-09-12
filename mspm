@@ -102,7 +102,18 @@ check_dependencies() {
     if declare -p depends &> /dev/null && [ ${#depends[@]} -gt 0 ]; then
         for dep in "${depends[@]}"; do
             if [ -n "$dep" ]; then
-                if ! is_package_installed "$dep" && [ -z "$(get_installed_package_entry "$dep")" ]; then
+                local satisfied=0
+                IFS='|' read -ra alt_deps <<< "${dep//||/|}"
+                for alt in "${alt_deps[@]}"; do
+                    alt=$(echo "$alt" | xargs)
+                    if [ -n "$alt" ]; then
+                        if is_package_installed "$alt" || [ -n "$(get_installed_package_entry "$alt")" ]; then
+                            satisfied=1
+                            break
+                        fi
+                    fi
+                done
+                if [ $satisfied -eq 0 ]; then
                     missing+=("$dep")
                 fi
             fi
@@ -120,8 +131,7 @@ check_dependencies() {
 prepare_build_script() {
     local package="$1"
     local repo="$2"
-    local cache_dir_name="${package}_${repo}"
-    local work_dir="${CACHE_BASE_DIR}/${cache_dir_name}"
+    local work_dir="${CACHE_BASE_DIR}/${repo}/${package}"
     local repo_script="${REPOS_BASE_DIR}/${repo}/${package}/mspm-build"
     local target_script="${work_dir}/mspm-build"
     
@@ -212,10 +222,9 @@ process_install_list() {
     for spec in "${resolved[@]}"; do
         pkg="${spec%%::*}"
         repo="${spec##*::}"
-        cache_dir_name="${pkg}_${repo}"
 
         if prepare_build_script "$pkg" "$repo"; then
-            work_dir="${CACHE_BASE_DIR}/${cache_dir_name}"
+            work_dir="${CACHE_BASE_DIR}/${repo}/${pkg}"
             script_file="${work_dir}/mspm-build"
             
             version=""
@@ -289,10 +298,9 @@ process_remove_list() {
         rest="${spec#*::}"
         repo="${rest%%::*}"
         ver="${rest#*::}"
-        cache_dir_name="${pkg}_${repo}"
 
         if prepare_build_script "$pkg" "$repo"; then
-            work_dir="${CACHE_BASE_DIR}/${cache_dir_name}"
+            work_dir="${CACHE_BASE_DIR}/${repo}/${pkg}"
             script_file="${work_dir}/mspm-build"
             
             source "$script_file"
