@@ -57,15 +57,11 @@ Target a specific repository entry for removal:
 
 ### make.conf example
 
-`
+```
 CFLAGS="-march=alderlake -O2 -pipe"
-`
-`
 CXXFLAGS="-march=alderlake -O2 -pipe"
-`
-`
 MAKEFLAGS="${MAKEFLAGS} -j12"
-`
+```
 
 ---
 
