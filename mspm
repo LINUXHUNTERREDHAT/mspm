@@ -18,10 +18,6 @@ load_make_conf() {
         set -a
         source "$MAKECONF_FILE"
         set +a
-
-        if [ -n "$MAKEOPTS" ]; then
-            export MAKEFLAGS="$MAKEOPTS $MAKEFLAGS"
-        fi
     fi
 }
 
