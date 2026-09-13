@@ -117,7 +117,7 @@ Every `mspm-build` script is sourced as a Bash script and must adhere to the fol
 #!/bin/sh
 
 version="2.68.1"
-depends=("cmake-bin")
+depends=("cmake-bin||cmake")
 
 install() {
     if [ ! -f 2.68.1.tar.gz ]; then
