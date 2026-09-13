@@ -55,6 +55,14 @@ Target a specific repository entry for removal:
 * `/etc/mspm/make.conf` — Configures environment variables (e.g., `MAKEOPTS="-j$(nproc)"`).
 * `/etc/mspm/installed` — Plain-text database tracking installed package specifications.
 
+### make.conf example
+
+`
+CFLAGS="-march=alderlake -O2 -pipe"
+CXXFLAGS="-march=alderlake -O2 -pipe"
+MAKEFLAGS="${MAKEFLAGS} -j12"
+`
+
 ---
 
 ## Adding custom repositories to `mspm`
