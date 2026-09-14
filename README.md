@@ -25,7 +25,7 @@ Install one or multiple packages:
 Explicitly target a specific repository using `pkg::repo` syntax:
 
 ```
-# mspm install cmake-bin::mspm-repo-master fastfetch
+# mspm install cmake-bin::master fastfetch
 ```
 
 ### 3. Removing Packages
@@ -39,7 +39,7 @@ Remove installed packages from the system:
 Target a specific repository entry for removal:
 
 ```
-# mspm remove fastfetch::mspm-repo-master
+# mspm remove fastfetch::master
 ```
 ### 4. Upgrading installed packages: 
 
