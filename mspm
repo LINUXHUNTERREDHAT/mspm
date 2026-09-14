@@ -29,7 +29,7 @@ get_ordered_repos() {
 
 find_package() {
     local target="$1"
-    
+
     if [[ "$target" == *"::"* ]]; then
         local pkg_name="${target%%::*}"
         local repo_name="${target##*::}"
@@ -67,7 +67,7 @@ register_package() {
     local repo_name="$2"
     local version="$3"
     local full_spec="${pkg_name}::${repo_name}::${version}"
-    
+
     mkdir -p "$(dirname "$INSTALLED_FILE")"
     touch "$INSTALLED_FILE"
     unregister_package "$pkg_name"
@@ -94,7 +94,7 @@ get_repo_version() {
 
 check_dependencies() {
     local missing=()
-    
+
     if declare -p depends &> /dev/null && [ ${#depends[@]} -gt 0 ]; then
         for dep in "${depends[@]}"; do
             if [ -n "$dep" ]; then
@@ -124,13 +124,36 @@ check_dependencies() {
     return 0
 }
 
+check_conflicts() {
+    local current_pkg="$1"
+    local found_conflicts=()
+
+    if declare -p conflicts &> /dev/null && [ ${#conflicts[@]} -gt 0 ]; then
+        for conf in "${conflicts[@]}"; do
+            conf=$(echo "$conf" | xargs)
+            if [ -n "$conf" ]; then
+                if [ "$conf" != "$current_pkg" ] && ( is_package_installed "$conf" || [ -n "$(get_installed_package_entry "$conf")" ] ); then
+                    found_conflicts+=("$conf")
+                fi
+            fi
+        done
+    fi
+
+    if [ ${#found_conflicts[@]} -gt 0 ]; then
+        echo -e "${CLR_RED}Error:${CLR_RESET} package conflicts with installed packages: ${CLR_YELLOW}${found_conflicts[*]}${CLR_RESET}"
+        return 1
+    fi
+
+    return 0
+}
+
 prepare_build_script() {
     local package="$1"
     local repo="$2"
     local work_dir="${CACHE_BASE_DIR}/${repo}/${package}"
     local repo_script="${REPOS_BASE_DIR}/${repo}/${package}/mspm-build"
     local target_script="${work_dir}/mspm-build"
-    
+
     if [ ! -f "$repo_script" ]; then
         echo -e "${CLR_RED}Error:${CLR_RESET} build script for ${CLR_CYAN}${package}${CLR_RESET} not found in repository ${CLR_YELLOW}${repo}${CLR_RESET}."
         return 1
@@ -153,17 +176,17 @@ sync_repo() {
     while IFS='=' read -r repo_name sync_cmd || [ -n "$repo_name" ]; do
         [[ "$repo_name" =~ ^[[:space:]]*# ]] && continue
         [[ -z "$repo_name" ]] && continue
-        
+
         repo_name=$(echo "$repo_name" | xargs)
         sync_cmd=$(echo "$sync_cmd" | xargs)
 
         if [ -n "$repo_name" ] && [ -n "$sync_cmd" ]; then
             echo -e "Synchronizing repository: ${CLR_YELLOW}${repo_name}${CLR_RESET}..."
             local repo_dir="${REPOS_BASE_DIR}/${repo_name}"
-            
+
             rm -rf "$repo_dir"
             mkdir -p "$repo_dir"
-            
+
             (cd "$repo_dir" && eval "$sync_cmd")
             if [ $? -eq 0 ]; then
                 echo -e "${CLR_GREEN}Repository ${CLR_YELLOW}${repo_name}${CLR_GREEN} successfully synchronized.${CLR_RESET}"
@@ -222,15 +245,20 @@ process_install_list() {
         if prepare_build_script "$pkg" "$repo"; then
             work_dir="${CACHE_BASE_DIR}/${repo}/${pkg}"
             script_file="${work_dir}/mspm-build"
-            
+
             version=""
+            unset depends conflicts
             source "$script_file"
             set +e
-            
+
             if ! check_dependencies; then
                 exit 1
             fi
-            
+
+            if ! check_conflicts "$pkg"; then
+                exit 1
+            fi
+
             if declare -f install &> /dev/null; then
                 echo -e "Executing install function for ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET}..."
                 ( set -e; install )
@@ -298,10 +326,10 @@ process_remove_list() {
         if prepare_build_script "$pkg" "$repo"; then
             work_dir="${CACHE_BASE_DIR}/${repo}/${pkg}"
             script_file="${work_dir}/mspm-build"
-            
+
             source "$script_file"
             set +e
-            
+
             if declare -f remove &> /dev/null; then
                 echo -e "Executing remove function for ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET}..."
                 ( set -e; remove )
@@ -376,7 +404,7 @@ process_update() {
     for (( i=0; i<${#updates_to_pkg[@]}; i++ )); do
         local pkg="${updates_to_pkg[$i]}"
         local repo="${updates_to_repo[$i]}"
-        
+
         echo -e "Updating ${CLR_CYAN}${pkg}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET}..."
         process_install_list "${pkg}::${repo}"
     done
@@ -390,7 +418,7 @@ process_search() {
     while IFS= read -r repo; do
         [ -z "$repo" ] && continue
         local repo_dir="${REPOS_BASE_DIR}/${repo}"
-        
+
         if [ -d "$repo_dir" ]; then
             while IFS= read -r script_path; do
                 [ -z "$script_path" ] && continue
@@ -403,11 +431,11 @@ process_search() {
                     local ver
                     ver=$(get_repo_version "$pkg_name" "$repo")
                     local installed_mark=""
-                    
+
                     if is_package_installed "$pkg_name"; then
                         installed_mark=" ${CLR_GREEN}[installed]${CLR_RESET}"
                     fi
-                    
+
                     echo -e "* ${CLR_CYAN}${pkg_name}${CLR_RESET}${CLR_YELLOW}::${repo}${CLR_RESET} ${CLR_BLUE}(version: ${ver:-unknown})${CLR_RESET}${installed_mark}"
                     found=1
                 fi
