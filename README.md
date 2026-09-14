@@ -104,6 +104,9 @@ Every `mspm-build` script is sourced as a Bash script and must adhere to the fol
 * Dependencies are defined using a standard Bash array: `depends=("pkg1" "pkg2::repo")`. Use `depends=("pkg1||pkg2")` to require one of pkgs
 * If there are no dependencies, leave the array empty or omit it entirely.
 
+### 3. Conflicts
+* If your package may conflict with other packages use `conflicts=("pkg1" "pkg2)` to mark packages as conflict
+
 ### 3. Version
 * The version is used for checking for the updates you should define the version in your mspm-build
 
@@ -122,17 +125,18 @@ Every `mspm-build` script is sourced as a Bash script and must adhere to the fol
 ```
 # Package recipe for fastfetch
 
-#!/bin/sh
+#!/bin/bash
 
 version="2.68.1"
+conflits=("fastfetch-bin")
 depends=("cmake-bin||cmake")
 
 install() {
-    if [ ! -f 2.68.1.tar.gz ]; then
-        wget https://github.com/fastfetch-cli/fastfetch/archive/refs/tags/2.68.1.tar.gz
-    fi
+    rm -f $version.tar.gz
+    wget https://github.com/fastfetch-cli/fastfetch/archive/refs/tags/$version.tar.gz
+    rm -rf fastfetch/
     mkdir -p fastfetch/
-    tar -xf 2.68.1.tar.gz -C fastfetch --strip-components=1
+    tar -xf $version.tar.gz -C fastfetch --strip-components=1
     cd fastfetch/
     ./run.sh
     cp build/fastfetch /usr/bin/fastfetch
