@@ -69,7 +69,7 @@ MAKEFLAGS="${MAKEFLAGS} -j12"
 
 To make repositories available to `mspm`, add an entry to `/etc/mspm/repos.conf` using the format `<repo_name> = <sync_command>`
 
-Adding `testing` - **unstable** repository to mspm:
+Adding `testing` - **unstable** repository to mspm: **DO NOT USE TESTING REPOSITORY PACKAGES MIGHT NOT BUILD CORRECTLY FROM THERE!**
 
 ```
 testing=wget -q "https://github.com/Nick-cpp/mspm-test-repo/archive/refs/tags/testing.tar.gz" -O - | tar -xz --strip-components=1
