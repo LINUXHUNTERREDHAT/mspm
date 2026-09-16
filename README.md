@@ -52,7 +52,7 @@ Target a specific repository entry for removal:
 ## Configuration
 
 * `/etc/mspm/repos.conf` — Defines repositories and sync commands.
-* `/etc/mspm/make.conf` — Configures environment variables (e.g., `MAKEOPTS="-j$(nproc)"`).
+* `/etc/mspm/make.conf` — Configures environment variables (e.g., `MAKEFLAGS="${MAKEFLAGS} -j16"`).
 * `/etc/mspm/installed` — Plain-text database tracking installed package specifications.
 
 ### make.conf example
