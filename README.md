@@ -113,16 +113,16 @@ Every `mspm-build` script is sourced as a Bash script and must adhere to the fol
 * If there are no dependencies, leave the array empty or omit it entirely.
 
 ### 3. Conflicts
-* If your package may conflict with other packages use `conflicts=("pkg1" "pkg2)` to mark packages as conflict
+* If your package may conflict with other packages use `conflicts=("pkg1" "pkg2")` to mark packages as conflict
 
-### 3. Version
+### 4. Version
 * The version is used for checking for the updates you should define the version in your mspm-build
 
-### 4. The `install()` Function
+### 5. The `install()` Function
 * Must be defined in the script.
 * Handles downloading, compiling, and copying binaries/files into the system (`/usr`, `/etc`, etc.).
 
-### 5. The `remove()` Function
+### 6. The `remove()` Function
 * Must be defined in the script.
 * Cleanly removes all files installed by the package.
 
