@@ -75,7 +75,7 @@ Adding `testing` - **unstable** repository to mspm:
 testing=wget -q "https://github.com/Nick-cpp/mspm-test-repo/archive/refs/tags/testing.tar.gz" -O - | tar -xz --strip-components=1
 ```
 
-**DO NOT USE TESTING REPOSITORY PACKAGES MIGHT NOT BUILD CORRECTLY FROM THERE! ONLY FOR TESTING!**
+**DO NOT USE TESTING REPOSITORY PACKAGES MIGHT NOT BUILD CORRECTLY FROM THERE! THIS REPOSITORY IS ONLY FOR TESTING!**
 
 # Creating a Repository for mspm
 
