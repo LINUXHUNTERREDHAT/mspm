@@ -136,7 +136,7 @@ Every `mspm-build` script is sourced as a Bash script and must adhere to the fol
 #!/bin/bash
 
 version="2.68.1"
-conflits=("fastfetch-bin")
+conflicts=("fastfetch-bin")
 depends=("cmake-bin||cmake")
 
 install() {
