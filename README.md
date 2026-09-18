@@ -145,7 +145,7 @@ Every `mspm-build` script is sourced as a Bash script and must adhere to the fol
 * If your package may conflict with other packages use `conflicts=("pkg1" "pkg2")` to mark packages as conflict
 
 ### 4. Version
-* The version is used for checking for the updates you should define the version in your mspm-build
+* The version is used for checking for the updates you should define the version in your mspm-build. Use `version=1.2.3`
 
 ### 5. The `install()` Function
 * Must be defined in the script.
