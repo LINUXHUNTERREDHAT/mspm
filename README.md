@@ -9,19 +9,27 @@ A simple, lightweight package manager.
 
 Installation into current system:
 
+```
 make install
+```
 
 Uninstallation:
 
+```
 make uninstall
+```
 
 Installation into a rootfs ( e. g. /mnt ):
 
+```
 make install DESTDIR=/mnt
+```
 
 Uninstallation:
 
+```
 make uninstall DESTDIR=/mnt
+```
 
 ---
 
