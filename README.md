@@ -4,6 +4,27 @@ A simple, lightweight package manager.
 
 ---
 
+
+## Installation
+
+Installation into current system:
+
+make install
+
+Uninstallation:
+
+make uninstall
+
+Installation into a rootfs ( e. g. /mnt ):
+
+make install DESTDIR=/mnt
+
+Uninstallation:
+
+make uninstall DESTDIR=/mnt
+
+---
+
 ## Usage
 
 ### 1. Synchronize Repositories
@@ -155,3 +176,5 @@ remove() {
 }
 
 ```
+
+Thanks to [LINUXHUNTERREDHAT](https://github.com/LINUXHUNTERREDHAT) for providing the Makefile.
