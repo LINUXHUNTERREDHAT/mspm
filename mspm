@@ -511,6 +511,12 @@ elif [ "$ACTION" = "list" ]; then
     process_list
 
 else
-    echo "Usage: mspm sync | install <pkg-1>[::repo]... | remove <pkg-1>[::repo]... | update | search [query] | list"
+    echo "Usage:"
+    echo "  mspm sync"
+    echo "  mspm install <pkg-1>[::repo]..."
+    echo "  mspm remove <pkg-1>[::repo]..."
+    echo "  mspm update"
+    echo "  mspm search [query]"
+    echo "  mspm list"
     exit 1
 fi
